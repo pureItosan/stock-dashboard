@@ -1,6 +1,6 @@
-const { YAHOO_BASE, fetchJSON } = require('../_lib/yahoo');
+import { YAHOO_BASE, fetchJSON } from '../_lib/yahoo.js';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     const { symbol } = req.query;
     const url = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d&includePrePost=false`;
@@ -31,7 +31,5 @@ module.exports = async function handler(req, res) {
       fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? 0, fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? 0,
       currency: meta.currency || 'TWD', exchange: meta.exchangeName || '',
     });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-};
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}

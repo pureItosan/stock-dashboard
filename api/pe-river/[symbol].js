@@ -1,6 +1,6 @@
-const { YAHOO_BASE, yahooHeaders, fetchJSON } = require('../_lib/yahoo');
+import { YAHOO_BASE, yahooHeaders, fetchJSON } from '../_lib/yahoo.js';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     const { symbol } = req.query;
     const chartUrl = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=3y&includePrePost=false`;
@@ -56,7 +56,5 @@ module.exports = async function handler(req, res) {
 
     const latestPE = currentPrice > 0 && epsPoints.length > 0 ? currentPrice / epsPoints[epsPoints.length - 1].eps : 0;
     res.json({ data: result, currentPE: latestPE, epsPoints });
-  } catch (e) {
-    res.status(500).json({ error: e.message, data: [], currentPE: 0 });
-  }
-};
+  } catch (e) { res.status(500).json({ error: e.message, data: [], currentPE: 0 }); }
+}

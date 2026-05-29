@@ -1,4 +1,4 @@
-const { YAHOO_BASE2, yahooHeaders, fetchJSON } = require('./_lib/yahoo');
+import { YAHOO_BASE2, fetchJSON } from './_lib/yahoo.js';
 
 let twStockList = [];
 let twStockListLoaded = false;
@@ -36,11 +36,10 @@ async function loadTWStockList() {
   } catch {}
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     const q = req.query.q;
     if (!q) return res.json({ quotes: [] });
-
     const hasChinese = /[一-鿿]/.test(q);
     if (hasChinese) {
       await loadTWStockList();
@@ -48,15 +47,9 @@ module.exports = async function handler(req, res) {
       const localResults = twStockList
         .filter(s => s.name.toLowerCase().includes(qLower) || s.code.includes(qLower))
         .slice(0, 10)
-        .map(s => ({
-          symbol: s.symbol, shortname: s.name,
-          exchange: s.symbol.endsWith('.TWO') ? 'TPEx' : 'TWSE',
-          exchDisp: s.symbol.endsWith('.TWO') ? '櫃買中心' : '臺灣證券交易所',
-          quoteType: 'EQUITY',
-        }));
+        .map(s => ({ symbol: s.symbol, shortname: s.name, exchange: s.symbol.endsWith('.TWO') ? 'TPEx' : 'TWSE', exchDisp: s.symbol.endsWith('.TWO') ? '櫃買中心' : '臺灣證券交易所', quoteType: 'EQUITY' }));
       if (localResults.length > 0) return res.json({ quotes: localResults });
     }
-
     const encoded = encodeURIComponent(q);
     let data = null;
     for (const url of [
@@ -65,14 +58,12 @@ module.exports = async function handler(req, res) {
     ]) {
       try { data = await fetchJSON(url); if (data?.quotes?.length) break; } catch { continue; }
     }
-
     if (!data || !data.quotes?.length) {
       if (/^\d{4,6}$/.test(q.trim())) {
         const results = [];
         for (const suffix of ['.TW', '.TWO']) {
           try {
-            const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${q.trim()}${suffix}?interval=1d&range=1d`;
-            const chartData = await fetchJSON(chartUrl);
+            const chartData = await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${q.trim()}${suffix}?interval=1d&range=1d`);
             const meta = chartData.chart?.result?.[0]?.meta;
             if (meta) results.push({ symbol: meta.symbol, shortname: meta.shortName || meta.symbol, exchange: meta.exchangeName, exchDisp: meta.fullExchangeName || meta.exchangeName, quoteType: 'EQUITY' });
           } catch {}
@@ -82,7 +73,5 @@ module.exports = async function handler(req, res) {
       return res.json({ quotes: [] });
     }
     res.json(data);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-};
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}

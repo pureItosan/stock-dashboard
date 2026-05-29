@@ -1,6 +1,6 @@
-const { YAHOO_BASE, yahooHeaders } = require('./_lib/yahoo');
+import { YAHOO_BASE, yahooHeaders } from './_lib/yahoo.js';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     const { symbols } = req.query;
     if (!symbols) return res.json([]);
@@ -20,15 +20,9 @@ module.exports = async function handler(req, res) {
         const li = timestamps.length - 1;
         if (li >= 1) { for (let i = li - 1; i >= 0; i--) { if (closes[i] != null && closes[i] > 0) { prevClose = closes[i]; break; } } }
         if (!prevClose) prevClose = meta.chartPreviousClose ?? 0;
-        return {
-          symbol: meta.symbol || sym, name: meta.shortName || meta.longName || sym, price,
-          change: price - prevClose, changePercent: prevClose ? ((price - prevClose) / prevClose) * 100 : 0,
-          volume: meta.regularMarketVolume ?? 0, marketCap: 0,
-        };
+        return { symbol: meta.symbol || sym, name: meta.shortName || meta.longName || sym, price, change: price - prevClose, changePercent: prevClose ? ((price - prevClose) / prevClose) * 100 : 0, volume: meta.regularMarketVolume ?? 0, marketCap: 0 };
       })
     );
     res.json(results.filter(r => r.status === 'fulfilled').map(r => r.value));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-};
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}

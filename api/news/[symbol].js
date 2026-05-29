@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     const { symbol } = req.query;
     const query = symbol.replace('.TW', '').replace('.TWO', '');
@@ -17,7 +17,5 @@ module.exports = async function handler(req, res) {
       items.push({ title, link, pubDate, source });
     }
     res.json({ items });
-  } catch (e) {
-    res.status(500).json({ error: e.message, items: [] });
-  }
-};
+  } catch (e) { res.status(500).json({ error: e.message, items: [] }); }
+}
