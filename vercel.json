@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/search", "destination": "/api/search" },
+    { "source": "/api/quotes", "destination": "/api/quotes" },
+    { "source": "/api/chart/:symbol", "destination": "/api/chart/[symbol]" },
+    { "source": "/api/quote/:symbol", "destination": "/api/quote/[symbol]" },
+    { "source": "/api/news/:symbol", "destination": "/api/news/[symbol]" },
+    { "source": "/api/pe-river/:symbol", "destination": "/api/pe-river/[symbol]" },
+    { "source": "/api/twse/institutional/:date", "destination": "/api/twse/institutional/[date]" }
+  ]
+}
