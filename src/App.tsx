@@ -22,6 +22,7 @@ import PERiverChart from './components/PERiverChart'
 import TechnicalSummary from './components/TechnicalSummary'
 import PatternAnalysis from './components/PatternAnalysis'
 import ProbabilityAnalysis from './components/ProbabilityAnalysis'
+import StockScreener from './components/StockScreener'
 
 type IndicatorTab = 'kd' | 'macd' | 'rsi'
 
@@ -195,7 +196,7 @@ export default function App() {
           <div className="flex items-center gap-2 mr-2">
             <Activity className="w-6 h-6 text-blue-600" />
             <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              StockPulse
+              幫哥換車
             </h1>
           </div>
           <SearchBar onSelect={handleSymbolSelect} />
@@ -252,6 +253,8 @@ export default function App() {
             ) : null}
 
             <SignalSummary kdData={kdData} macdData={macdData} rsiData={rsiData} chartData={chartData} />
+
+            <StockScreener onStockClick={handleSymbolSelect} />
 
             <ProbabilityAnalysis chartData={chartData} kdData={kdData} macdData={macdData} rsiData={rsiData} />
 
@@ -314,7 +317,7 @@ export default function App() {
 
       <footer className="border-t mt-8 py-4">
         <div className="max-w-[1600px] mx-auto px-4 text-center text-xs text-gray-400">
-          StockPulse Stock Dashboard | 資料來源: Yahoo Finance, TWSE | 僅供參考，不構成投資建議
+          幫哥換車小工具 | 資料來源: Yahoo Finance, TWSE | 僅供參考，不構成投資建議
         </div>
       </footer>
     </div>
