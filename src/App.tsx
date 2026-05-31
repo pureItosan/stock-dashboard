@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Moon, Sun, Activity, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Moon, Sun, Car, ToggleLeft, ToggleRight } from 'lucide-react'
 import type { OHLCV, StockQuote, NewsItem, KDData, MACDData, Timeframe, RangeOption, ChipData } from './types'
 import { getChartData, getQuote, getNews, getMultipleQuotes, TW_SECTORS, US_SECTORS } from './api/stock'
 import { calculateKD, calculateMACD, calculateRSI, calculateBollingerBands } from './utils/indicators'
@@ -194,7 +194,7 @@ export default function App() {
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl border-b">
         <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-4">
           <div className="flex items-center gap-2 mr-2">
-            <Activity className="w-6 h-6 text-blue-600" />
+            <Car className="w-6 h-6 text-rose-500" />
             <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               幫哥換車
             </h1>

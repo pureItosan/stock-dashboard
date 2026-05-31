@@ -1,24 +1,24 @@
 import { YAHOO_BASE, yahooHeaders } from './_lib/yahoo.js';
 
-// All stocks to scan
-const TW_STOCKS = [
-  '2330.TW','2303.TW','2454.TW','3711.TW','2379.TW','6415.TW','3034.TW','2408.TW',
-  '2317.TW','2382.TW','2356.TW','4938.TW','3231.TW','2353.TW',
-  '2308.TW','2327.TW','3008.TW','2345.TW','2049.TW','6669.TW',
-  '2881.TW','2882.TW','2884.TW','2886.TW','2891.TW','2887.TW','2880.TW','2890.TW',
-  '1301.TW','1303.TW','1326.TW','6505.TW','1101.TW','1102.TW',
-  '2412.TW','3045.TW','4904.TW','2912.TW','1216.TW',
-  '2603.TW','2609.TW','2615.TW','2618.TW','2610.TW',
-  '6446.TW','4743.TW','1760.TW','6472.TW','4142.TW',
-];
-const US_STOCKS = [
-  'AAPL','MSFT','GOOGL','META','NVDA','AMD','INTC','CRM','ADBE','ORCL',
-  'AMZN','TSLA','HD','NKE','MCD','SBUX','COST','WMT',
-  'JPM','BAC','WFC','GS','MS','V','MA','AXP',
-  'JNJ','PFE','UNH','ABBV','MRK','LLY','TMO',
-  'XOM','CVX','COP','SLB','EOG',
-  'NFLX','DIS','CMCSA','T','VZ',
-];
+// Stock lists with Chinese names
+const TW_STOCKS = {
+  '2330.TW':'台積電','2303.TW':'聯電','2454.TW':'聯發科','3711.TW':'日月光投控','2379.TW':'瑞昱','6415.TW':'矽力-KY','3034.TW':'聯詠','2408.TW':'南亞科',
+  '2317.TW':'鴻海','2382.TW':'廣達','2356.TW':'英業達','4938.TW':'和碩','3231.TW':'緯創','2353.TW':'宏碁',
+  '2308.TW':'台達電','2327.TW':'國巨','3008.TW':'大立光','2345.TW':'智邦','2049.TW':'上銀','6669.TW':'緯穎',
+  '2881.TW':'富邦金','2882.TW':'國泰金','2884.TW':'玉山金','2886.TW':'兆豐金','2891.TW':'中信金','2887.TW':'台新金','2880.TW':'華南金','2890.TW':'永豐金',
+  '1301.TW':'台塑','1303.TW':'南亞','1326.TW':'台化','6505.TW':'台塑化','1101.TW':'台泥','1102.TW':'亞泥',
+  '2412.TW':'中華電','3045.TW':'台灣大','4904.TW':'遠傳','2912.TW':'統一超','1216.TW':'統一',
+  '2603.TW':'長榮','2609.TW':'陽明','2615.TW':'萬海','2618.TW':'長榮航','2610.TW':'華航',
+  '6446.TW':'藥華藥','4743.TW':'合一','1760.TW':'寶齡富錦','6472.TW':'保瑞','4142.TW':'國光生',
+};
+const US_STOCKS = {
+  'AAPL':'Apple','MSFT':'Microsoft','GOOGL':'Alphabet','META':'Meta','NVDA':'NVIDIA','AMD':'AMD','INTC':'Intel','CRM':'Salesforce','ADBE':'Adobe','ORCL':'Oracle',
+  'AMZN':'Amazon','TSLA':'Tesla','HD':'Home Depot','NKE':'Nike','MCD':'McDonald\'s','SBUX':'Starbucks','COST':'Costco','WMT':'Walmart',
+  'JPM':'JPMorgan','BAC':'BofA','WFC':'Wells Fargo','GS':'Goldman','MS':'Morgan Stanley','V':'Visa','MA':'Mastercard','AXP':'AmEx',
+  'JNJ':'J&J','PFE':'Pfizer','UNH':'UnitedHealth','ABBV':'AbbVie','MRK':'Merck','LLY':'Eli Lilly','TMO':'Thermo Fisher',
+  'XOM':'ExxonMobil','CVX':'Chevron','COP':'ConocoPhillips','SLB':'Schlumberger','EOG':'EOG Resources',
+  'NFLX':'Netflix','DIS':'Disney','CMCSA':'Comcast','T':'AT&T','VZ':'Verizon',
+};
 
 async function fetchChart(symbol, interval, range) {
   const url = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&includePrePost=false`;
@@ -36,6 +36,30 @@ async function fetchChart(symbol, interval, range) {
     volume: q.volume?.[i] ?? 0,
   })).filter(d => d.open > 0 && d.close > 0);
   return { bars, meta: result.meta };
+}
+
+// Fetch TWSE institutional data for net buying
+async function fetchInstitutional() {
+  try {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+    const url = `https://www.twse.com.tw/rwd/zh/fund/T86?date=${dateStr}&selectType=ALL&response=json`;
+    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!resp.ok) return {};
+    const data = await resp.json();
+    if (!data.data) return {};
+    const map = {};
+    for (const row of data.data) {
+      const code = row[0]?.trim();
+      if (!code) continue;
+      const parse = (s) => parseInt(s?.replace(/,/g, ''), 10) || 0;
+      const foreignNet = parse(row[4]);
+      const trustNet = parse(row[7]);
+      const dealerNet = parse(row[10]) + parse(row[13]);
+      map[code] = { foreignNet, trustNet, dealerNet, totalNet: foreignNet + trustNet + dealerNet };
+    }
+    return map;
+  } catch { return {}; }
 }
 
 function calcKD(data, period = 9) {
@@ -90,11 +114,10 @@ function calcTD(data) {
   return result;
 }
 
-function scoreStock(bars, meta) {
+function scoreStock(bars, meta, cnName, institutional) {
   if (bars.length < 60) return null;
-  const name = meta?.shortName || meta?.longName || meta?.symbol || '';
-  const price = meta?.regularMarketPrice ?? bars[bars.length-1].close;
   const symbol = meta?.symbol || '';
+  const price = meta?.regularMarketPrice ?? bars[bars.length-1].close;
 
   const kd = calcKD(bars);
   const macd = calcMACD(bars);
@@ -109,18 +132,18 @@ function scoreStock(bars, meta) {
   let score = 0;
   const reasons = [];
 
-  // 1. TD Sequential approaching 9 (buy setup = close < close 4 bars ago)
+  // 1. TD Sequential approaching 9
   if (lastTD.buy >= 7) {
     score += lastTD.buy === 9 ? 30 : lastTD.buy === 8 ? 25 : 18;
     reasons.push(`TD買${lastTD.buy}`);
   }
 
-  // 2. KD low (oversold zone)
+  // 2. KD low
   if (lastKD.k < 25 && lastKD.d < 25) { score += 25; reasons.push(`KD低檔(${lastKD.k.toFixed(0)}/${lastKD.d.toFixed(0)})`); }
   else if (lastKD.k < 35 && lastKD.d < 35) { score += 15; reasons.push(`KD偏低(${lastKD.k.toFixed(0)}/${lastKD.d.toFixed(0)})`); }
   else if (lastKD.k < 50) { score += 5; reasons.push(`KD中低(${lastKD.k.toFixed(0)})`); }
 
-  // 3. MACD converging (histogram shrinking, approaching zero crossing)
+  // 3. MACD converging
   if (lastMACD.hist < 0 && prevMACD.hist < 0 && lastMACD.hist > prevMACD.hist) {
     const convergence = Math.abs(lastMACD.hist) < Math.abs(prevMACD.hist) * 0.7;
     if (convergence) { score += 20; reasons.push('MACD強收斂'); }
@@ -130,7 +153,7 @@ function scoreStock(bars, meta) {
     score += 15; reasons.push('MACD金叉');
   }
 
-  // 4. Volume expanding (volume ratio)
+  // 4. Volume expanding
   const recent3 = bars.slice(-3);
   const prev10 = bars.slice(-13, -3);
   const avgRecent = recent3.reduce((s, d) => s + d.volume, 0) / 3;
@@ -139,7 +162,19 @@ function scoreStock(bars, meta) {
   if (volRatio > 1.5) { score += 20; reasons.push(`放量${volRatio.toFixed(1)}x`); }
   else if (volRatio > 1.2) { score += 10; reasons.push(`量增${volRatio.toFixed(1)}x`); }
 
-  // 5. Price near recent low (value territory)
+  // 5. Institutional net buying (主力買超) - TW only
+  if (institutional) {
+    const code = symbol.replace('.TW', '').replace('.TWO', '');
+    const inst = institutional[code];
+    if (inst && inst.totalNet > 0) {
+      const netShares = inst.totalNet;
+      if (netShares > 5000) { score += 20; reasons.push(`主力買超${(netShares/1000).toFixed(0)}張`); }
+      else if (netShares > 1000) { score += 12; reasons.push(`主力小買${(netShares/1000).toFixed(0)}張`); }
+      else { score += 5; reasons.push('主力微買'); }
+    }
+  }
+
+  // 6. Price near recent low
   const low20 = Math.min(...bars.slice(-20).map(d => d.low));
   const high20 = Math.max(...bars.slice(-20).map(d => d.high));
   const range20 = high20 - low20;
@@ -148,26 +183,42 @@ function scoreStock(bars, meta) {
     if (position < 0.25) { score += 10; reasons.push('近20日低點'); }
   }
 
-  if (score < 15) return null;
+  if (score < 10) return null;
 
-  return { symbol, name, price, score, reasons, kd: lastKD, td: lastTD, macdHist: lastMACD.hist, volRatio: Math.round(volRatio * 100) / 100 };
+  return {
+    symbol, cnName, name: meta?.shortName || meta?.longName || '', price, score, reasons,
+    kd: lastKD, td: lastTD, macdHist: lastMACD.hist,
+    volRatio: Math.round(volRatio * 100) / 100,
+  };
 }
 
-// Cache
 let cachedResult = null;
 let cacheTime = 0;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 10 * 60 * 1000;
 
 export default async function handler(req, res) {
   try {
-    // Return cache if fresh
+    const page = parseInt(req.query.page) || 0; // 0 = first 5, 1 = next 5
+
     if (cachedResult && Date.now() - cacheTime < CACHE_TTL) {
-      return res.json(cachedResult);
+      // Paginate from cache
+      const tw = cachedResult.twAll.slice(page * 5, page * 5 + 5);
+      const us = cachedResult.usAll.slice(page * 5, page * 5 + 5);
+      return res.json({
+        tw, us, scannedAt: cachedResult.scannedAt,
+        totalScanned: cachedResult.totalScanned,
+        hasMore: cachedResult.twAll.length > (page + 1) * 5 || cachedResult.usAll.length > (page + 1) * 5,
+      });
     }
 
-    const allStocks = [...TW_STOCKS, ...US_STOCKS];
+    // Fetch institutional data for TW
+    const institutional = await fetchInstitutional();
 
-    // Fetch all in parallel (batched to avoid overwhelming)
+    const twSymbols = Object.keys(TW_STOCKS);
+    const usSymbols = Object.keys(US_STOCKS);
+    const allStocks = [...twSymbols, ...usSymbols];
+    const nameMap = { ...TW_STOCKS, ...US_STOCKS };
+
     const batchSize = 15;
     const scored = [];
 
@@ -177,7 +228,7 @@ export default async function handler(req, res) {
         batch.map(async (sym) => {
           const chart = await fetchChart(sym, '1d', '6mo');
           if (!chart || chart.bars.length < 60) return null;
-          return scoreStock(chart.bars, chart.meta);
+          return scoreStock(chart.bars, chart.meta, nameMap[sym] || '', institutional);
         })
       );
       for (const r of results) {
@@ -185,18 +236,17 @@ export default async function handler(req, res) {
       }
     }
 
-    // Split by market and sort
-    const tw = scored.filter(s => s.symbol.endsWith('.TW') || s.symbol.endsWith('.TWO'))
-      .sort((a, b) => b.score - a.score).slice(0, 5);
-    const us = scored.filter(s => !s.symbol.endsWith('.TW') && !s.symbol.endsWith('.TWO'))
-      .sort((a, b) => b.score - a.score).slice(0, 5);
+    const twAll = scored.filter(s => s.symbol.endsWith('.TW') || s.symbol.endsWith('.TWO'))
+      .sort((a, b) => b.score - a.score);
+    const usAll = scored.filter(s => !s.symbol.endsWith('.TW') && !s.symbol.endsWith('.TWO'))
+      .sort((a, b) => b.score - a.score);
 
-    const output = { tw, us, scannedAt: new Date().toISOString(), totalScanned: allStocks.length };
-
-    cachedResult = output;
+    cachedResult = { twAll, usAll, scannedAt: new Date().toISOString(), totalScanned: allStocks.length };
     cacheTime = Date.now();
 
-    res.json(output);
+    const tw = twAll.slice(0, 5);
+    const us = usAll.slice(0, 5);
+    res.json({ tw, us, scannedAt: cachedResult.scannedAt, totalScanned: allStocks.length, hasMore: twAll.length > 5 || usAll.length > 5 });
   } catch (e) {
     res.status(500).json({ error: e.message, tw: [], us: [] });
   }
