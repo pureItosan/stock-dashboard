@@ -71,6 +71,7 @@ export async function getQuote(symbol: string): Promise<StockQuote | null> {
       marketCap: data.marketCap ?? 0,
       trailingPE: data.trailingPE,
       dividendYield: data.dividendYield,
+      annualDividend: data.annualDividend,
       currency: data.currency || 'TWD',
       exchange: data.exchange || '',
     }

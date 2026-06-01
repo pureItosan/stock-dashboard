@@ -1,4 +1,4 @@
-import { YAHOO_BASE, fetchJSON } from '../_lib/yahoo.js';
+import { YAHOO_BASE, yahooHeaders, fetchJSON } from '../_lib/yahoo.js';
 
 export default async function handler(req, res) {
   try {
@@ -20,6 +20,27 @@ export default async function handler(req, res) {
     if (!prevClose) prevClose = meta.chartPreviousClose ?? 0;
     const change = price - prevClose;
     const changePct = prevClose ? (change / prevClose) * 100 : 0;
+
+    // Fetch dividend data (trailing 12 months)
+    let dividendYield = 0;
+    let annualDividend = 0;
+    try {
+      const divUrl = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=1y&events=div`;
+      const divResp = await fetch(divUrl, { headers: yahooHeaders });
+      if (divResp.ok) {
+        const divData = await divResp.json();
+        const divEvents = divData.chart?.result?.[0]?.events?.dividends;
+        if (divEvents) {
+          for (const key of Object.keys(divEvents)) {
+            annualDividend += divEvents[key].amount || 0;
+          }
+          if (price > 0 && annualDividend > 0) {
+            dividendYield = (annualDividend / price) * 100;
+          }
+        }
+      }
+    } catch {}
+
     res.json({
       symbol: meta.symbol || symbol, shortName: meta.shortName || meta.longName || symbol, longName: meta.longName,
       regularMarketPrice: price, regularMarketChange: change, regularMarketChangePercent: changePct,
@@ -29,6 +50,8 @@ export default async function handler(req, res) {
       regularMarketOpen: lastIdx >= 0 ? quote.open?.[lastIdx] : 0,
       regularMarketPreviousClose: prevClose,
       fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? 0, fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? 0,
+      dividendYield: Math.round(dividendYield * 100) / 100 || 0,
+      annualDividend: Math.round(annualDividend * 100) / 100 || 0,
       currency: meta.currency || 'TWD', exchange: meta.exchangeName || '',
     });
   } catch (e) { res.status(500).json({ error: e.message }); }

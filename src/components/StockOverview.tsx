@@ -35,7 +35,8 @@ export default function StockOverview({ quote, loading }: Props) {
     { label: '成交量', value: formatLargeNumber(quote.regularMarketVolume) },
     { label: '市值', value: formatLargeNumber(quote.marketCap) },
     { label: '本益比', value: quote.trailingPE ? formatNumber(quote.trailingPE) : '--' },
-    { label: '殖利率', value: quote.dividendYield ? formatPercent(quote.dividendYield).replace('+', '') : '--' },
+    { label: '殖利率', value: quote.dividendYield ? `${quote.dividendYield.toFixed(2)}%` : '--', highlight: quote.dividendYield && quote.dividendYield >= 4 },
+    { label: '年配息', value: quote.annualDividend ? `${quote.annualDividend} ${quote.currency}` : '--' },
     { label: '52週高', value: formatNumber(quote.fiftyTwoWeekHigh) },
     { label: '52週低', value: formatNumber(quote.fiftyTwoWeekLow) },
   ]
@@ -67,10 +68,10 @@ export default function StockOverview({ quote, loading }: Props) {
         </div>
       </div>
       <div className="grid grid-cols-5 gap-3">
-        {metrics.map((m) => (
-          <div key={m.label} className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+        {metrics.map((m: any) => (
+          <div key={m.label} className={`px-3 py-2 rounded-lg ${m.highlight ? 'bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-200 dark:ring-amber-800' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
             <div className="text-xs text-gray-500 dark:text-gray-400">{m.label}</div>
-            <div className="font-semibold text-sm mt-0.5">{m.value}</div>
+            <div className={`font-semibold text-sm mt-0.5 ${m.highlight ? 'text-amber-600' : ''}`}>{m.value}</div>
           </div>
         ))}
       </div>

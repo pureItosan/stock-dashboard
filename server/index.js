@@ -203,7 +203,24 @@ app.get('/api/quote/:symbol', async (req, res) => {
       fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? 0,
       currency: meta.currency || 'TWD',
       exchange: meta.exchangeName || '',
-    });
+      dividendYield: 0,
+      annualDividend: 0,
+    };
+    // Fetch dividend data
+    try {
+      const divUrl = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=1y&events=div`;
+      const divData = await cachedFetch(`div:${symbol}`, divUrl, 3600);
+      const divEvents = divData.chart?.result?.[0]?.events?.dividends;
+      if (divEvents) {
+        let annual = 0;
+        for (const k of Object.keys(divEvents)) annual += divEvents[k].amount || 0;
+        if (price > 0 && annual > 0) {
+          result.dividendYield = Math.round((annual / price) * 10000) / 100;
+          result.annualDividend = Math.round(annual * 100) / 100;
+        }
+      }
+    } catch {}
+    res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

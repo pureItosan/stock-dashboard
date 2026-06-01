@@ -24,6 +24,7 @@ export interface StockQuote {
   marketCap: number
   trailingPE?: number
   dividendYield?: number
+  annualDividend?: number
   currency: string
   exchange: string
 }
