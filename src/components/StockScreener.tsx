@@ -10,6 +10,7 @@ interface ScreenerStock {
   price: number
   score: number
   reasons: string[]
+  conditionCount: number
   kd: { k: number; d: number }
   td: { buy: number; sell: number }
   macdHist: number
@@ -21,6 +22,8 @@ interface ScreenerData {
   us: ScreenerStock[]
   scannedAt: string
   totalScanned: number
+  qualifiedTW: number
+  qualifiedUS: number
   hasMore: boolean
 }
 
@@ -49,14 +52,38 @@ function ScoreBar({ score }: { score: number }) {
 
 function ReasonTag({ text }: { text: string }) {
   let color = 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-  if (text.includes('TD')) color = 'bg-purple-100 dark:bg-purple-950/30 text-purple-600'
+  if (text.includes('週')) color = 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 font-semibold'
+  else if (text.includes('TD')) color = 'bg-purple-100 dark:bg-purple-950/30 text-purple-600'
   else if (text.includes('KD')) color = 'bg-blue-100 dark:bg-blue-950/30 text-blue-600'
   else if (text.includes('MACD')) color = 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600'
-  else if (text.includes('量') || text.includes('放量')) color = 'bg-orange-100 dark:bg-orange-950/30 text-orange-600'
+  else if (text.includes('RSI')) color = 'bg-cyan-100 dark:bg-cyan-950/30 text-cyan-600'
+  else if (text.includes('均線') || text.includes('季線')) color = 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700'
+  else if (text.includes('量') || text.includes('放量') || text.includes('吸籌')) color = 'bg-orange-100 dark:bg-orange-950/30 text-orange-600'
   else if (text.includes('主力')) color = 'bg-rose-100 dark:bg-rose-950/30 text-rose-600'
-  else if (text.includes('低點')) color = 'bg-red-100 dark:bg-red-950/30 text-red-500'
+  else if (text.includes('布林') || text.includes('下軌')) color = 'bg-sky-100 dark:bg-sky-950/30 text-sky-600'
+  else if (text.includes('吞噬') || text.includes('鎚子') || text.includes('紅K')) color = 'bg-pink-100 dark:bg-pink-950/30 text-pink-600'
+  else if (text.includes('低點') || text.includes('低區')) color = 'bg-red-100 dark:bg-red-950/30 text-red-500'
 
   return <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${color}`}>{text}</span>
+}
+
+function ConditionDots({ count }: { count: number }) {
+  const max = 6
+  const filled = Math.min(count, max)
+  return (
+    <div className="flex items-center gap-0.5" title={`符合 ${count} 個條件`}>
+      {Array.from({ length: max }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-1.5 h-1.5 rounded-full ${
+            i < filled
+              ? count >= 5 ? 'bg-red-500' : count >= 4 ? 'bg-orange-500' : 'bg-amber-400'
+              : 'bg-gray-200 dark:bg-gray-700'
+          }`}
+        />
+      ))}
+    </div>
+  )
 }
 
 export default function StockScreener({ onStockClick }: Props) {
@@ -69,6 +96,8 @@ export default function StockScreener({ onStockClick }: Props) {
   const [page, setPage] = useState(0)
   const [scannedAt, setScannedAt] = useState('')
   const [totalScanned, setTotalScanned] = useState(0)
+  const [qualifiedTW, setQualifiedTW] = useState(0)
+  const [qualifiedUS, setQualifiedUS] = useState(0)
 
   const fetchPage = (p: number, append: boolean) => {
     const setLoad = p === 0 ? setLoading : setLoadingMore
@@ -86,6 +115,8 @@ export default function StockScreener({ onStockClick }: Props) {
         setHasMore(d.hasMore)
         setScannedAt(d.scannedAt)
         setTotalScanned(d.totalScanned)
+        if (d.qualifiedTW != null) setQualifiedTW(d.qualifiedTW)
+        if (d.qualifiedUS != null) setQualifiedUS(d.qualifiedUS)
         setPage(p)
       })
       .catch(() => {})
@@ -124,12 +155,25 @@ export default function StockScreener({ onStockClick }: Props) {
         </div>
       </div>
 
-      <div className="text-[10px] text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 mb-3 flex flex-wrap gap-x-3 gap-y-0.5">
-        <span className="flex items-center gap-1"><Activity className="w-3 h-3 text-purple-500" /> TD 九轉接近</span>
-        <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3 text-blue-500" /> KD 低檔</span>
-        <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3 text-emerald-500" /> MACD 收斂</span>
-        <span className="flex items-center gap-1"><Volume2 className="w-3 h-3 text-orange-500" /> 量比放大</span>
-        <span className="flex items-center gap-1"><Users className="w-3 h-3 text-rose-500" /> 主力買超</span>
+      <div className="text-[10px] text-gray-500 bg-gradient-to-br from-rose-50 to-amber-50 dark:from-rose-950/20 dark:to-amber-950/20 rounded-lg p-2.5 mb-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="font-semibold text-rose-600 dark:text-rose-400">券商操盤手選股條件</span>
+          <span className="text-[10px] text-gray-500">至少符合 <span className="font-bold text-rose-600">3 項</span> 才入選</span>
+        </div>
+        <div className="grid grid-cols-3 gap-x-2 gap-y-0.5">
+          <span>① TD 九轉序列</span>
+          <span>② KD 低檔/金叉</span>
+          <span>③ MACD 收斂/金叉</span>
+          <span>④ 成交量放大</span>
+          <span>⑤ 主力買超</span>
+          <span>⑥ 均線排列</span>
+          <span>⑦ RSI 低檔回升</span>
+          <span>⑧ 布林下軌反彈</span>
+          <span>⑨ 量價底背離</span>
+          <span>⑩ 跌深近底</span>
+          <span className="text-indigo-600 font-semibold">⑪ 週線共振</span>
+          <span>⑫ K 線型態</span>
+        </div>
       </div>
 
       {loading && stocks.length === 0 ? (
@@ -165,6 +209,7 @@ export default function StockScreener({ onStockClick }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  <ConditionDots count={s.conditionCount} />
                   <span className="text-sm font-semibold">{formatNumber(s.price)}</span>
                   <ScoreBar score={s.score} />
                 </div>
@@ -194,8 +239,8 @@ export default function StockScreener({ onStockClick }: Props) {
 
       {scannedAt && (
         <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex justify-between">
-          <span>掃描 {totalScanned} 檔 | {new Date(scannedAt).toLocaleTimeString('zh-TW')}</span>
-          <span>TD≥7 + KD低 + MACD收斂 + 放量 + 主力</span>
+          <span>掃描 {totalScanned} 檔，符合 3+ 條件：台股 {qualifiedTW} 檔 / 美股 {qualifiedUS} 檔</span>
+          <span>{new Date(scannedAt).toLocaleTimeString('zh-TW')}</span>
         </div>
       )}
     </div>
